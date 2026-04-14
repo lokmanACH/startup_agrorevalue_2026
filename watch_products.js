@@ -2,10 +2,18 @@ const cron = require("node-cron");
 const { readData, writeData } = require("./utils/db");
 const { getOrderedBids, createAllocations } = require("./websocket/order_bids");
 
-// find expired products
+// Lazy-load broadcast to avoid circular-require at startup
+function getBroadcast() {
+    try {
+        return require("./socket").broadcastBidsUpdate;
+    } catch {
+        return null;
+    }
+}
+
+// find expired active products
 function getExpiredProducts(products) {
     const now = new Date();
-
     return products.filter(p =>
         p.status === "active" &&
         new Date(p.end_time) <= now
@@ -17,7 +25,6 @@ async function processAuctions() {
     console.log("Auction scheduler running...");
 
     const db = await readData();
-
     const expiredProducts = getExpiredProducts(db.products);
 
     if (expiredProducts.length === 0) {
@@ -25,8 +32,10 @@ async function processAuctions() {
         return;
     }
 
-    for (const product of expiredProducts) {
+    const broadcastBidsUpdate = getBroadcast();
+    const affectedProductIds  = [];
 
+    for (const product of expiredProducts) {
         console.log(` Processing product ${product.id}`);
 
         const allocations = createAllocations(
@@ -50,30 +59,30 @@ async function processAuctions() {
         }));
 
         db.allocations.push(...formatted);
-
         product.status = "closed";
+        affectedProductIds.push(product.id);
     }
 
     await writeData(db);
-
     console.log("Auctions completed & saved");
+
+    // Notify connected WebSocket clients for each closed product
+    if (broadcastBidsUpdate) {
+        for (const pid of affectedProductIds) {
+            await broadcastBidsUpdate(pid);
+        }
+    }
 }
 
-//  scheduler
+// scheduler
 function startAuctionScheduler() {
-    // every 12 hours
-    // cron.schedule("0 */12 * * *", async () => {
-    //     await processAuctions();
-    // });
-
+    // Run every minute (change to "0 */12 * * *" for production)
     cron.schedule("* * * * *", async () => {
         await processAuctions();
     });
 
-
-    console.log(" Auction scheduler started");
+    console.log("Auction scheduler started");
 }
 
-module.exports = {
-    startAuctionScheduler
-};
+module.exports = { startAuctionScheduler };
+

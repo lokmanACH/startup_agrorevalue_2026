@@ -162,7 +162,7 @@ function createAllocations(product, users, bids, getOrderedBids) {
             buyer_id: bid.buyer_id,
             bid_id: bid.id,
             allocated_quantity: allocatedQty,
-            final_price: allocatedQty * bid.price_per_kg,
+            final_price: allocatedQty * bid.price_per_kg + product.deliveryPrice,
             order: i + 1,
 
             user: {

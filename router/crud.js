@@ -65,11 +65,20 @@ router.post('/:entity', checkEntityExists, async (req, res) => {
         req.entityData.push(newRecord);
         await writeData(req.db);
         
+        // If a new bid was placed, broadcast updated ordered bids to all watching clients
+        if (req.params.entity === 'bids' && newRecord.product_id) {
+            try {
+                const { broadcastBidsUpdate } = require('../socket');
+                broadcastBidsUpdate(Number(newRecord.product_id));
+            } catch (err) { /* silent fail if socket not started */ }
+        }
+
         res.status(201).json(newRecord);
     } catch (error) {
         res.status(500).json({ error: "Failed to create record" });
     }
 });
+
 
 // PUT /api/:entity/:id -> Update a record partially (as requested)
 router.put('/:entity/:id', checkEntityExists, async (req, res) => {
@@ -84,6 +93,14 @@ router.put('/:entity/:id', checkEntityExists, async (req, res) => {
         // Merges existing object with body instead of replacing entirely
         req.entityData[index] = { ...req.entityData[index], ...req.body, id: req.entityData[index].id };
         await writeData(req.db);
+
+        // Notify subscribers if this is a product update
+        if (req.params.entity === 'products') {
+            try {
+                const { broadcastBidsUpdate } = require('../socket');
+                broadcastBidsUpdate(Number(id));
+            } catch (err) {}
+        }
 
         res.json(req.entityData[index]);
     } catch (error) {
@@ -105,6 +122,14 @@ router.patch('/:entity/:id', checkEntityExists, async (req, res) => {
         req.entityData[index] = { ...req.entityData[index], ...req.body, id: req.entityData[index].id };
         await writeData(req.db);
 
+        // Notify subscribers if this is a product update
+        if (req.params.entity === 'products') {
+            try {
+                const { broadcastBidsUpdate } = require('../socket');
+                broadcastBidsUpdate(Number(id));
+            } catch (err) {}
+        }
+
         res.json(req.entityData[index]);
     } catch (error) {
         res.status(500).json({ error: "Failed to update record partially" });
@@ -123,6 +148,14 @@ router.delete('/:entity/:id', checkEntityExists, async (req, res) => {
 
         const deletedRecord = req.entityData.splice(index, 1)[0];
         await writeData(req.db);
+
+        // Notify subscribers if this was a product delete
+        if (req.params.entity === 'products') {
+            try {
+                const { broadcastBidsUpdate } = require('../socket');
+                broadcastBidsUpdate(Number(id));
+            } catch (err) {}
+        }
 
         res.json({ message: "Record deleted", deleted: deletedRecord });
     } catch (error) {
