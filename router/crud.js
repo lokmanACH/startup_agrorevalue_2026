@@ -68,7 +68,7 @@ router.post('/:entity', checkEntityExists, async (req, res) => {
         // If a new bid was placed, broadcast updated ordered bids to all watching clients
         if (req.params.entity === 'bids' && newRecord.product_id) {
             try {
-                const { broadcastBidsUpdate } = require('../socket');
+                const { broadcastBidsUpdate } = require('./socket');
                 broadcastBidsUpdate(Number(newRecord.product_id));
             } catch (err) { /* silent fail if socket not started */ }
         }
@@ -97,7 +97,7 @@ router.put('/:entity/:id', checkEntityExists, async (req, res) => {
         // Notify subscribers if this is a product update
         if (req.params.entity === 'products') {
             try {
-                const { broadcastBidsUpdate } = require('../socket');
+                const { broadcastBidsUpdate } = require('./socket');
                 broadcastBidsUpdate(Number(id));
             } catch (err) {}
         }
@@ -125,7 +125,7 @@ router.patch('/:entity/:id', checkEntityExists, async (req, res) => {
         // Notify subscribers if this is a product update
         if (req.params.entity === 'products') {
             try {
-                const { broadcastBidsUpdate } = require('../socket');
+                const { broadcastBidsUpdate } = require('./socket');
                 broadcastBidsUpdate(Number(id));
             } catch (err) {}
         }
@@ -152,7 +152,7 @@ router.delete('/:entity/:id', checkEntityExists, async (req, res) => {
         // Notify subscribers if this was a product delete
         if (req.params.entity === 'products') {
             try {
-                const { broadcastBidsUpdate } = require('../socket');
+                const { broadcastBidsUpdate } = require('./socket');
                 broadcastBidsUpdate(Number(id));
             } catch (err) {}
         }

@@ -5,7 +5,7 @@ const { getOrderedBids, createAllocations } = require("./websocket/order_bids");
 // Lazy-load broadcast to avoid circular-require at startup
 function getBroadcast() {
     try {
-        return require("./socket").broadcastBidsUpdate;
+        return require("./router/socket").broadcastBidsUpdate;
     } catch {
         return null;
     }
